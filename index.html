@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Your Name — Homepage</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container">
+    <img class="avatar" src="https://avatars.githubusercontent.com/" alt="avatar">
+    <h1>Your Name</h1>
+    <p class="tagline">Developer • Open-source • Projects</p>
+    <nav class="links">
+      <a href="#projects">Projects</a>
+      <a href="#about">About</a>
+      <a href="https://github.com/">GitHub</a>
+      <a href="mailto:you@example.com">Email</a>
+    </nav>
+    <section id="projects" class="card">
+      <h2>Featured</h2>
+      <ul>
+        <li><a href="#">Project One</a> — short description</li>
+        <li><a href="#">Project Two</a> — short description</li>
+      </ul>
+    </section>
+    <section id="about" class="card">
+      <h2>About</h2>
+      <p>Short bio about you. What you build, interests, and how to contact you.</p>
+    </section>
+  </main>
+  <footer class="footer">© <span id="year"></span> Your Name</footer>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
