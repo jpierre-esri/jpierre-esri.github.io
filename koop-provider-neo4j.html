@@ -9,9 +9,146 @@
 <body>
   <main class="container">
     <h1>koop-provider-neo4j</h1>
-    <p>Feature service provider for Neo4j graph databases. Exposes graph spatial data as GeoJSON/feature services via a Koop provider. Includes Docker configuration, Neo4j plugins, and example import data.</p>
-    <p><a href="https://github.com/jpierre-esri/koop-provider-neo4j" target="_blank" rel="noopener">View on GitHub</a></p>
-    <p><a href="index.html">← Back to Home</a></p>
+
+    <section class="card">
+      <h2>Overview</h2>
+      <p>This project demonstrates a Koop provider that exposes Neo4j graph data as a feature service for Web GIS clients. It focuses on using Neo4j's spatial capabilities to store and serve geographic features and provides a simple REST endpoint to deliver GeoJSON for mapping platforms.</p>
+    </section>
+
+    <section class="card">
+      <h2>Motivation</h2>
+      <p>Most web GIS work uses highly-structured RDBMS backends. This project explores using a graph database (Neo4j) for spatial data to leverage graph queries and relationships while still making data available to traditional GIS clients via feature-service-style endpoints.</p>
+    </section>
+
+    <section class="card">
+      <h2>Highlights</h2>
+      <ul>
+        <li>Neo4j with spatial plugins to store geographic geometries.</li>
+        <li>Koop provider that queries Neo4j and returns GeoJSON suitable for mapping clients.</li>
+        <li>Docker-based development environment with sample import data.</li>
+        <li>Examples showing how to import shapefiles and verify spatial data in Neo4j.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Quick setup (summary)</h2>
+      <p>Run Neo4j in Docker, install the spatial server plugins in the <code>plugins</code> folder, mount an <code>import_data</code> folder, and start the Koop provider to serve feature endpoints at <code>http://localhost:8080</code>.</p>
+    </section>
+
+    <section class="card">
+      <h2>Dockerfile (neo4j)</h2>
+      <pre><code>FROM neo4j:2025.07.1 AS base
+RUN echo "dbms.security.procedures.unrestricted=spatial.*" >> $NEO4J_HOME/conf/neo4j.conf
+</code></pre>
+    </section>
+
+    <section class="card">
+      <h2>docker-compose (example)</h2>
+      <pre><code>networks:
+  default:
+    name: graph.net
+    driver: bridge
+
+services:
+  neo4j:
+    container_name: neo4j
+    image: neo4j:2025.07.1
+    hostname: neo4j.graph.net
+    build:
+      context: .
+      dockerfile: ./neo4j.Dockerfile
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - "../db_data:/data"
+      - "../plugins:/plugins"
+      - "../import_data:/var/lib/neo4j/import"
+    environment:
+      NEO4J_HOME: /var/lib/neo4j
+</code></pre>
+    </section>
+
+    <section class="card">
+      <h2>Importing data</h2>
+      <p>Place shapefiles (and any import assets) into the mounted <code>import_data</code> folder. From the Neo4j browser you can import a shapefile with the spatial plugin calls, for example:</p>
+      <pre><code>call spatial.addLayer("layer_name","wkt","","")
+call spatial.importShapefileToLayer('layer_name', 'import/shapefile_name')
+</code></pre>
+      <p>Verify imported geometries with a Cypher query such as:</p>
+      <pre><code>MATCH (n) WHERE n.geometry is not null RETURN * LIMIT 10
+</code></pre>
+    </section>
+
+    <section class="card">
+      <h2>Koop provider</h2>
+      <p>The Koop provider serves Neo4j query results at a REST endpoint which can be consumed by GIS platforms. Example endpoint format used in the project:</p>
+      <pre><code>http://localhost:8080/provider-neo4j-spatial/rest/services/FeatureServer/0/query?layer=0
+</code></pre>
+      <p>Two example queries are defined in <code>default.json</code> to return points and lines (by node property <code>gtype</code>).</p>
+    </section>
+
+    <section class="card">
+      <h2>Notes / Tips</h2>
+      <ul>
+        <li>Some shapefiles may partially load attributes; try removing problematic attributes if import stalls.</li>
+        <li>Ensure the Neo4j spatial plugins and their dependencies are placed in the <code>plugins</code> folder mounted into the container.</li>
+        <li>Performance can be improved by passing extents and pagination to the provider endpoints.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Code examples</h2>
+      <h3>config/default.json</h3>
+      <pre><code>{
+  "neo4j": {
+    "enabled": true,
+    "uri": "bolt://localhost:7687",
+    "user": "neo4j",
+    "password": "blarg123",
+    "query": [
+      "call spatial.withinDistance('ottawa', point({latitude: 45.303, longitude: -75.935, srid: 4326}), 1)  yield node as n match (n) where n.gtype=5 return *",
+      "CALL spatial.layer('ottawa') YIELD node AS layerNode match (n) where n.gtype=6 return * limit 10000",
+      "call spatial.withinDistance('ottawa', point({latitude: 45.303, longitude: -75.935, srid: 4326}), 1)  yield node as n match (n) where n.gtype=1 return *"
+    ]
+  }
+}
+</code></pre>
+
+      <h3>src/index.js (provider config)</h3>
+      <pre><code>const provider = {
+  type: 'provider',
+  name: 'provider-neo4j-spatial',
+  hosts: false,
+  disableIdParam: true,
+  Controller: require('./controller'),
+  Model: require('./model'),
+  routes: require('./routes'),
+  version: require('../package.json').version
+}
+
+module.exports = provider
+</code></pre>
+
+      <h3>src/model.js (getData / WKT parser)</h3>
+      <pre><code>// model.js exposes getData(req, callback) which uses neo4j-driver
+// to run a Cypher query from config.neo4j.query[req.query.layer]
+// and translates results into GeoJSON. Key helper:
+function parseWktToGeoJson(wkt) {
+  // supports POINT, LINESTRING, MULTILINESTRING, POLYGON, MULTIPOLYGON
+  // returns a GeoJSON geometry or null
+}
+
+// Example: run query, map records to features, return FeatureCollection
+// session.run(cypher).then(result => { ... callback(null, geojson) })
+</code></pre>
+    </section>
+
+    <section class="card">
+      <h2>Links</h2>
+      <p><a href="https://github.com/jpierre-esri/koop-provider-neo4j" target="_blank" rel="noopener">Source on GitHub</a></p>
+      <p><a href="index.html">← Back to Home</a></p>
+    </section>
   </main>
 </body>
 </html>
